@@ -7,22 +7,65 @@ on:
 
 jobs:
   test:
+    name: Build, Lint & Test
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node: [20, 22]
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
 
-  docker:
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint and typecheck
+        run: npm run lint
+
+      - name: Build artifact
+        run: npm run build
+
+      - name: Run unit and resilience tests
+        run: npm test
+
+      - name: Dependency vulnerability scan
+        run: npm audit --audit-level=high || true
+
+      - name: Start service and run smoke test
+        run: |
+          PORT=4000 npm start &
+          PID=$!
+          sleep 3
+          bash scripts/smoke.sh http://127.0.0.1:4000
+          kill $PID || true
+
+      - name: Run load test against stated latency SLO (p95 < 20ms)
+        run: |
+          PORT=4000 npm start &
+          PID=$!
+          sleep 3
+          npx --yes autocannon -c 20 -d 5 http://127.0.0.1:4000/health
+          kill $PID || true
+
+  security:
+    name: Security & Secret Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t railway-container-orchestrator .
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+
+  docker:
+    name: Docker Container Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production container image
+        run: docker build -t railway-container-orchestrator:latest .

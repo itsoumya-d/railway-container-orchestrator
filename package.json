@@ -10,6 +10,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "lint": "tsc --noEmit",
     "start": "node dist/src/server.js",
     "cli": "node dist/src/client.js",
     "test": "vitest run"
