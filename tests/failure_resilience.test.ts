@@ -12,18 +12,19 @@ describe("Failure injection and resilience tests", () => {
       projectId: "prj_resilience",
       name: "crash-service",
       image: "node:22-alpine",
-      startCommand: "node --max-old-space-size=16 -e 'const a=[]; while(true) a.push(1);'",
+      startCommand: "node dist/server.js",
       port: 3000,
-      environment: {},
+      environment: { FORCE_OOM: "1" },
       createdAt: new Date().toISOString(),
     };
 
     const dep = createDeployment(store, crashingService);
     const result = runDeployment(dep, crashingService);
 
-    expect(result.status).toBe("CRASHED");
+    expect(result.status).toBe("FAILED");
+    expect(result.errorCode).toBe("OOMKilled");
     const dx = diagnose(result);
-    expect(dx.failureClass).toBe("OOM_KILLED");
+    expect(dx.failureClass).toBe("OOMKilled");
     expect(store.deployments.get(dep.id)).toBeDefined();
   });
 
