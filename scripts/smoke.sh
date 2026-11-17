@@ -18,7 +18,7 @@ echo "PASS: /health returned ok:true"
 echo "Checking /graphql query..."
 GQL_RES=$(curl -fsS -X POST "${TARGET_URL}/graphql" \
   -H "Content-Type: application/json" \
-  -d '{"query":"query { services { id name status } }"}')
+  -d '{"operation":"projects"}')
 
 if [[ "${GQL_RES}" != *'data'* ]]; then
   echo "FAIL: Unexpected GraphQL response: ${GQL_RES}"
